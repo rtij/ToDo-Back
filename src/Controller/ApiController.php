@@ -2,11 +2,17 @@
 
 namespace App\Controller;
 
+use App\Entity\Achat;
 use App\Entity\Authtoken;
+use App\Entity\Detaila;
+use App\Entity\Produit;
 use App\Entity\Project;
 use App\Entity\Task;
 use App\Entity\User;
+use App\Repository\AchatRepository;
 use App\Repository\AuthtokenRepository;
+use App\Repository\DetailaRepository;
+use App\Repository\ProduitRepository;
 use App\Repository\ProjectRepository;
 use App\Repository\TaskRepository;
 use App\Repository\TaskstateRepository;
@@ -206,64 +212,134 @@ class ApiController extends AbstractController
     /**
      * @Route("/task/create/{idproject}", name="TaskCreate", methods={"POST"})
      */
-    public function CreateTask(Request $request, TaskRepository $t, Project $project){
+    public function CreateTask(Request $request, TaskRepository $t, Project $project)
+    {
         $donnes = json_decode($request->getContent());
         $task = new Task();
         $task->setIdproject($project);
         $task->setTasks($donnes->data->tasks);
-        if($donnes->data->datef != null){
+        if ($donnes->data->datef != null) {
             $task->setDatef(new DateTime($donnes->data->datef));
         }
-        if($donnes->data->dates != null){
+        if ($donnes->data->dates != null) {
             $task->setDatef($donnes->data->dates);
         }
         $sauv = $this->getDoctrine()->getManager();
         $sauv->persist($task);
         $sauv->flush();
-        return $this->json(['data'=>$t->findOneByIdtask($t->getLast())], 200, [], ["groups" => "post:read"]);
+        return $this->json(['data' => $t->findOneByIdtask($t->getLast())], 200, [], ["groups" => "post:read"]);
     }
 
     /**
      * @Route("/task/update/{idtask}", name="TaskUpdate", methods={"PUT"})
      */
-    public function UpdateTask(Request $request, TaskRepository $t, Task $task){
+    public function UpdateTask(Request $request, TaskRepository $t, Task $task)
+    {
         $donnes = json_decode($request->getContent());
         $task->setTasks($donnes->data->tasks);
-        if($donnes->data->datef){
+        if ($donnes->data->datef) {
             $task->setDatef(new DateTime($donnes->data->datef));
-        }else{
+        } else {
             $task->setDatef(null);
         }
-        if($donnes->data->dates){
+        if ($donnes->data->dates) {
             $task->setDatef($donnes->data->dates);
-        }else{
+        } else {
             $task->setDates(null);
         }
         $sauv = $this->getDoctrine()->getManager();
         $sauv->persist($task);
         $sauv->flush();
-        return $this->json(['data'=>$t->findOneByIdtask($t->getLast())], 200, [], ["groups" => "post:read"]);
+        return $this->json(['data' => $t->findOneByIdtask($t->getLast())], 200, [], ["groups" => "post:read"]);
     }
 
     /**
      * @Route("/task/done/{idtask}", name="TaskDone", methods={"GET"})
      */
-    public function setTaskDone(TaskRepository $t, Task $task){
+    public function setTaskDone(TaskRepository $t, Task $task)
+    {
         $task->setIsdone(!$task->isIsdone());
         $sauv = $this->getDoctrine()->getManager();
         $project = $task->getIdproject();
         $sauv->persist($task);
         $sauv->flush();
-        return $this->json(['data'=>$t->findOneByIdproject($project)], 200, [], ["groups" => "post:read"]);
+        return $this->json(['data' => $t->findOneByIdproject($project)], 200, [], ["groups" => "post:read"]);
     }
     /**
      * @Route("/task/delete/{idtask}", name="TaskDelete", methods={"DELETE"})
      */
-    public function DeleteTask(Task $task, TaskRepository $t, ProjectRepository $p){
+    public function DeleteTask(Task $task, TaskRepository $t, ProjectRepository $p)
+    {
         // $project = $p->findOneByIdproject($task->getIdproject()->getIdproject());
         $sauv = $this->getDoctrine()->getManager();
         $sauv->remove($task);
         $sauv->flush();
-        return $this->json(['data'=>$t->findAll()], 200, [], ["groups" => "post:read"]);
+        return $this->json(['data' => $t->findAll()], 200, [], ["groups" => "post:read"]);
+    }
+
+    /**
+     * @Route("/task/list", name="TaskList", methods={"GET"})
+     */
+    public function getTaskList(TaskRepository $taskRepository)
+    {
+        return $this->json(['data' => $taskRepository->findAll()], 200, [], ["groups" => "post:read"]);
+    }
+
+
+    /**
+     * @Route("/produit/list", name="ProduitList", methods={"GET"})
+     */
+    public function getProduitList(ProduitRepository $produitRepository)
+    {
+        return $this->json(['data' => $produitRepository->findAll()], 200);
+    }
+
+    /**
+     * @Route("/detaila/list", name="DetailaList", methods={"GET"})
+     */
+    public function getDetailaList(DetailaRepository $detailaRepository)
+    {
+        return $this->json(['data' => $detailaRepository->findAll()], 200);
+    }
+
+
+    /**
+     * @Route("/produit/new", name="AddProduit", methods={"POST"})
+     */
+    public function NewProduit(Request $request, ProduitRepository $taskRepository)
+    {
+        $donnes = json_decode($request->getContent());
+        $p = new Produit();
+        $p->setName($donnes->data->name);
+        $p->setPrix($donnes->data->prix);
+        $sauv = $this->getDoctrine()->getManager();
+        $sauv->persist($p);
+        $sauv->flush();
+        return $this->json(['data' => $taskRepository->findAll()], 200);
+    }
+
+    /**
+     * @Route("/detaila/new", name="AddDetaila", methods={"POST"})
+     */
+    public function NewDetaila(Request $request, AchatRepository $a, ProduitRepository $taskRepository, DetailaRepository $detailaRepository)
+    {
+        $donnes = json_decode($request->getContent());
+        $d = new Detaila();
+        $achat = $a->findOneByDatea(new DateTime($donnes->data->idachat->datea));
+        $sauv = $this->getDoctrine()->getManager();
+        if (!$achat) {
+            $ac = new Achat();
+            $ac->setDatea(new DateTime($donnes->data->idachat->datea));
+            $sauv->persist($ac);
+            $sauv->flush();
+            $d->setIdachat($ac);
+        } else {
+            $d->setIdachat($achat);
+        }
+        $d->setIdproduit($taskRepository->findOneById($donnes->data->idproduit->id));
+        $d->setNombre($donnes->data->nombre);
+        $sauv->persist($d);
+        $sauv->flush();
+        return $this->json(['data' => $detailaRepository->findAll()], 200);
     }
 }
